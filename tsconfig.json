@@ -5,17 +5,11 @@
     "moduleResolution": "node16",
     "esModuleInterop": true,
     "strict": true,
-    "lib": [
-      "ESNext"
-    ],
-    "types": [
-      "node"
-    ],
+    "lib": ["ESNext"],
+    "types": ["node"],
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }
