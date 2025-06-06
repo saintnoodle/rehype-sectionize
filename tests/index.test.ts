@@ -1,9 +1,9 @@
-import { expect, test } from "vitest";
-import { rehype } from "rehype";
-import { readSync } from "to-vfile";
-import rehypeMinifyWhitespace from "rehype-minify-whitespace";
-import rehypeSectionize, { type RehypeSectionizeOptions } from "../src";
 import { toHtml } from "hast-util-to-html";
+import { rehype } from "rehype";
+import rehypeMinifyWhitespace from "rehype-minify-whitespace";
+import { readSync } from "to-vfile";
+import { expect, test } from "vitest";
+import rehypeSectionize, { type RehypeSectionizeOptions } from "../src";
 
 const planeProcessor = rehype()
   .data("settings", { fragment: true })
@@ -17,13 +17,17 @@ const run = (name: string, options?: RehypeSectionizeOptions) => {
 
   const input = toHtml(
     processor.runSync(
-      planeProcessor.parse(readSync(`./tests/fixtures/${name}/input.html`)),
+      processor.parse(
+        readSync(`./tests/fixtures/${name}/input.html`).toString(),
+      ),
     ),
   );
 
   const output = toHtml(
     planeProcessor.runSync(
-      planeProcessor.parse(readSync(`./tests/fixtures/${name}/output.html`)),
+      planeProcessor.parse(
+        readSync(`./tests/fixtures/${name}/output.html`).toString(),
+      ),
     ),
   );
 
@@ -40,3 +44,4 @@ run("properties", { properties: { className: ["changed"] } });
 run("idPropertyName", { idPropertyName: "dataChanged" });
 run("rankPropertyName", { rankPropertyName: "dataChanged" });
 run("nonRankPropertyName", { rankPropertyName: undefined });
+run("classPropertyValue", { classPropertyValue: "changed" });

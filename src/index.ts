@@ -1,14 +1,15 @@
-import { Plugin } from "unified";
-import { headingRank } from "hast-util-heading-rank";
-import { heading } from "hast-util-heading";
 import type { Element, Root, RootContent } from "hast";
+import { heading } from "hast-util-heading";
+import { headingRank } from "hast-util-heading-rank";
 import type { Properties } from "hastscript";
+import type { Plugin } from "unified";
 
 export type RehypeSectionizeOptions = {
   properties?: Properties | undefined;
   enableRootSection?: boolean | undefined;
   rankPropertyName?: string | undefined;
   idPropertyName?: string | undefined;
+  classPropertyValue?: string | undefined;
 };
 
 const defaultOptions: Required<RehypeSectionizeOptions> = {
@@ -16,6 +17,7 @@ const defaultOptions: Required<RehypeSectionizeOptions> = {
   enableRootSection: false,
   rankPropertyName: "dataHeadingRank",
   idPropertyName: "ariaLabelledby",
+  classPropertyValue: "heading",
 };
 
 const wrappingRank = (
@@ -40,13 +42,11 @@ const wrappingRank = (
 
 const createElement = (
   rank: number,
-  options: Pick<
-    RehypeSectionizeOptions,
-    "properties" | "rankPropertyName" | "idPropertyName"
-  >,
+  options: RehypeSectionizeOptions,
   children: Element[] = [],
 ) => {
-  const { properties, rankPropertyName, idPropertyName } = options;
+  const { properties, classPropertyValue, idPropertyName, rankPropertyName } =
+    options;
 
   if (
     properties != null &&
@@ -63,7 +63,7 @@ const createElement = (
     type: "element",
     tagName: "section",
     properties: {
-      className: ["heading"],
+      ...(classPropertyValue ? { className: classPropertyValue } : {}),
       ...(rankPropertyName ? { [rankPropertyName]: rank } : {}),
       ...(idPropertyName && typeof id === "string"
         ? { [idPropertyName]: id }
@@ -77,19 +77,21 @@ const createElement = (
 };
 
 const sectionize: Plugin<[RehypeSectionizeOptions?], Root> = (
-  options = defaultOptions,
+  sectionizeOptions,
 ) => {
-  const { enableRootSection, ...rest } = {
-    properties: options.properties ?? defaultOptions.properties,
-    enableRootSection:
-      options.enableRootSection ?? defaultOptions.enableRootSection,
-    rankPropertyName:
-      options.rankPropertyName ?? defaultOptions.rankPropertyName,
-    idPropertyName: options.idPropertyName ?? defaultOptions.idPropertyName,
+  const options = {
+    ...defaultOptions,
+    ...(sectionizeOptions
+      ? Object.fromEntries(
+          Object.entries(sectionizeOptions).filter(
+            ([_, value]) => value !== undefined,
+          ),
+        )
+      : {}),
   };
 
   return (root) => {
-    const rootWrapper = createElement(0, rest);
+    const rootWrapper = createElement(0, options);
 
     const wrapperStack: RootContent[] = [];
     wrapperStack.push(rootWrapper);
@@ -109,17 +111,19 @@ const sectionize: Plugin<[RehypeSectionizeOptions?], Root> = (
           throw new Error("heading or headingRank is not working");
         }
 
-        if (rank > wrappingRank(lastStackItem(), rest.rankPropertyName)) {
-          const childWrapper = createElement(rank, rest, [rootContent]);
+        if (rank > wrappingRank(lastStackItem(), options.rankPropertyName)) {
+          const childWrapper = createElement(rank, options, [rootContent]);
           lastStackItem().children.push(childWrapper);
           wrapperStack.push(childWrapper);
         } else if (
-          rank <= wrappingRank(lastStackItem(), rest.rankPropertyName)
+          rank <= wrappingRank(lastStackItem(), options.rankPropertyName)
         ) {
-          while (rank <= wrappingRank(lastStackItem(), rest.rankPropertyName)) {
+          while (
+            rank <= wrappingRank(lastStackItem(), options.rankPropertyName)
+          ) {
             wrapperStack.pop();
           }
-          const siblingWrapper = createElement(rank, rest, [rootContent]);
+          const siblingWrapper = createElement(rank, options, [rootContent]);
 
           lastStackItem().children.push(siblingWrapper);
           wrapperStack.push(siblingWrapper);
@@ -134,7 +138,9 @@ const sectionize: Plugin<[RehypeSectionizeOptions?], Root> = (
 
     return {
       ...root,
-      children: enableRootSection ? [rootWrapper] : rootWrapper.children,
+      children: options.enableRootSection
+        ? [rootWrapper]
+        : rootWrapper.children,
     };
   };
 };
